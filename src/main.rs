@@ -12,10 +12,10 @@ const IMAGE_DATA: &[u8] = include_bytes!("../yamato.png");
 // NTSC signal constants
 
 /// The frequency of the color carrier wave in hz.
-const NTSC_COLOR_CARRIER_FREQ: f32 = 3.579545e7;
+const NTSC_COLOR_CARRIER_FREQ: f32 = 3.579545e6;
 
 /// The period of the color carrier sine wave.
-const NTSC_COLOR_CARRIER_PERIOD: f32 = 2.0 * PI / NTSC_COLOR_CARRIER_FREQ;
+const NTSC_COLOR_CARRIER_PERIOD: f32 = 1.0 / NTSC_COLOR_CARRIER_FREQ;
 
 /// The length of time for each scanline in seconds.
 /// http://www.hpcc.ecs.soton.ac.uk/dan/pic/video_PIC.htm
@@ -91,7 +91,8 @@ impl NtscEncoder {
         // Output pixel luma.
         let (y, i, q) = Self::rgb_to_yiq(pixel_sample);
 
-        y + i * f32::sin(time * NTSC_COLOR_CARRIER_FREQ) + q * f32::cos(time * NTSC_COLOR_CARRIER_FREQ)
+        y + i * f32::sin(time * 2.0 * PI * NTSC_COLOR_CARRIER_FREQ)
+          + q * f32::cos(time * 2.0 * PI * NTSC_COLOR_CARRIER_FREQ)
     }
 
     /// Sample a pixel at the given pixel index.
@@ -168,7 +169,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     event_loop.run(move |event, _, _| {
         const TIMING_NOISE: f32 = SCANLINE_TIME * 0.0;
-        const SIGNAL_NOISE: f32 = 1.0;
+        const SIGNAL_NOISE: f32 = 0.0;
 
         //if let Event::RedrawRequested(_) = event {
             println!("Redraw requested");
@@ -193,8 +194,8 @@ fn main() -> Result<(), Box<dyn Error>> {
                     let sample = encoder.sample(sample_time + time_offset) * (1.0 - SIGNAL_NOISE)
                         + noise * SIGNAL_NOISE;
                     luma += sample;
-                    i += sample * f32::sin(sample_time * NTSC_COLOR_CARRIER_FREQ);
-                    q += sample * f32::cos(sample_time * NTSC_COLOR_CARRIER_FREQ);
+                    i += sample * f32::sin(sample_time * 2.0 * PI * NTSC_COLOR_CARRIER_FREQ);
+                    q += sample * f32::cos(sample_time * 2.0 * PI * NTSC_COLOR_CARRIER_FREQ);
                     sample_time += DECODER_TIME_PER_SAMPLE;
                 }
                 luma = luma / DECODER_SAMPLES_PER_PERIOD as f32;
