@@ -4,7 +4,7 @@ mod decoder;
 pub use encoder::*;
 pub use decoder::*;
 
-use crate::types::SignalFloat;
+use crate::types::{SignalFloat, PI};
 
 /// The frequency of the color carrier wave in hz.
 pub const NTSC_COLOR_CARRIER_FREQ: SignalFloat = 3.579545e6;
@@ -23,3 +23,13 @@ pub const NTSC_SCANLINE_PERIOD: SignalFloat = 64e-6;
 /// The length of time for a full image in an NTSC signal, which is the period for each scanline
 /// times the number of scanlines.
 pub const NTSC_IMAGE_PERIOD: SignalFloat = NTSC_SCANLINE_PERIOD * NTSC_SCANLINE_COUNT as SignalFloat;
+
+/// A simple oscillator function that generates the color carrier wave, either in-phase (sin) or
+/// out of phase (which is just cosine or + PI/2).
+pub fn generate_color_carrier(time: SignalFloat, in_phase: bool) -> SignalFloat {
+    let oscillator = match in_phase {
+        true => SignalFloat::sin,
+        false => SignalFloat::cos,
+    };
+    oscillator(time * 2.0 * PI * NTSC_COLOR_CARRIER_FREQ)
+}

@@ -11,5 +11,17 @@ pub const PI: SignalFloat = std::f64::consts::PI as SignalFloat;
 /// The type for an rgba pixel sample.
 pub type PixelSample = (u8, u8, u8, u8);
 
+/// The type for an RGB color sample, in floating point format.
+pub type RgbSample = (SignalFloat, SignalFloat, SignalFloat);
+
+/// The type for an sRGB color sample, in floating point format.
+pub type SrgbSample = (SignalFloat, SignalFloat, SignalFloat);
+
 /// The type for a YIQ (NTSC color space) sample.
 pub type YiqSample = (SignalFloat, SignalFloat, SignalFloat);
+
+/// The instant a sample from the signal was taken.
+pub type SampleTime = SignalFloat;
+
+/// The value of a sample from the signal.
+pub type SampleValue = SignalFloat;
