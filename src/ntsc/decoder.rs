@@ -55,10 +55,10 @@ impl NtscDecoder {
             let color = Self::yiq_to_rgb((y, i, q));
 
             if srgb {
-                Self::srgb_to_rgb(color)
+                color
             }
             else {
-                color
+                Self::srgb_to_rgb(color)
             }
         }
         else {

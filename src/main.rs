@@ -89,7 +89,6 @@ fn main() -> Result<(), Box<dyn Error>> {
         let window_size = window.inner_size();
         let surface_texture = SurfaceTexture::new(window_size.width, window_size.height, &window);
         PixelsBuilder::new(OUTPUT_WIDTH, OUTPUT_HEIGHT, surface_texture)
-            //.texture_format(pixels::wgpu::TextureFormat::Rgba8Unorm)
             .build()?
     };
 
@@ -127,7 +126,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                     }
 
                     // Decode new samples.
-                    let (r, g, b) = decoder.decode(false);
+                    let (r, g, b) = decoder.decode(true);
 
                     pixel[0] = SignalFloat::clamp(r * 255.0, 0.0, 255.0) as u8;
                     pixel[1] = SignalFloat::clamp(g * 255.0, 0.0, 255.0) as u8;
