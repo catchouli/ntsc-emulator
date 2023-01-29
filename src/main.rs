@@ -2,7 +2,7 @@ mod ntsc;
 mod types;
 
 use std::error::Error;
-use pixels::{SurfaceTexture, Pixels};
+use pixels::{SurfaceTexture, PixelsBuilder};
 use rand::{SeedableRng, Rng};
 use rand::rngs::StdRng;
 use winit::event::Event;
@@ -20,11 +20,11 @@ const OUTPUT_HEIGHT: u32 = NTSC_SCANLINE_COUNT;
 const IMAGE_DATA: &[u8] = include_bytes!("../yamato.png");
 
 /// The amount of timing jitter to add to each scanline, in order to add a little analog 'jiggle'.
-const TIMING_JITTER: SignalFloat = NTSC_SCANLINE_PERIOD * 0.005;
+const TIMING_JITTER: SignalFloat = NTSC_SCANLINE_PERIOD * 0.000;
 
 /// The amount of noise to add to the encoded signal before decoding it. The signal is attenuated
 /// by the noise, and 1.0 noise leaves none of the original signal and just colorful snow.
-const SIGNAL_NOISE: SignalFloat = 0.05;
+const SIGNAL_NOISE: SignalFloat = 0.00;
 
 /// The length of time for the entire output image.
 const OUTPUT_IMAGE_TIME: SignalFloat = NTSC_SCANLINE_PERIOD * OUTPUT_HEIGHT as SignalFloat;
@@ -38,6 +38,26 @@ const SAMPLES_PER_PERIOD: usize = 5;
 
 // TODO: note the sine wave might not align with the start of a scanline.
 const TIME_PER_SAMPLE: SignalFloat = NTSC_COLOR_CARRIER_PERIOD / SAMPLES_PER_PERIOD as SignalFloat;
+
+/// Generate timing jitter.
+fn generate_timing_jitter(rng: &mut impl Rng) -> SignalFloat {
+    if TIMING_JITTER > 0.0 {
+        rng.gen_range(0.0..TIMING_JITTER)
+    }
+    else {
+        0.0
+    }
+}
+
+/// Generate signal noise.
+fn generate_signal_noise(rng: &mut impl Rng) -> SignalFloat {
+    if SIGNAL_NOISE > 0.0 {
+        rng.gen_range(0.0..SIGNAL_NOISE)
+    }
+    else {
+        0.0
+    }
+}
 
 /// The main test program for the NTSC encoder/decoder - creates an NtscEncoder with the image from
 /// `IMAGE_DATA` loaded in, and then encodes a signal using it, adds noise and timing jitter, and
@@ -68,7 +88,9 @@ fn main() -> Result<(), Box<dyn Error>> {
     let mut pixels = {
         let window_size = window.inner_size();
         let surface_texture = SurfaceTexture::new(window_size.width, window_size.height, &window);
-        Pixels::new(OUTPUT_WIDTH, OUTPUT_HEIGHT, surface_texture)?
+        PixelsBuilder::new(OUTPUT_WIDTH, OUTPUT_HEIGHT, surface_texture)
+            //.texture_format(pixels::wgpu::TextureFormat::Rgba8Unorm)
+            .build()?
     };
 
     // Create NTSC encoder and decoder and load image.
@@ -87,7 +109,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                 let mut time_offset = 0.0;
                 for (idx, pixel) in buf.chunks_exact_mut(4).enumerate() {
                     if (idx as u32) % OUTPUT_WIDTH == 0 {
-                        time_offset = rng.gen_range(0.0..TIMING_JITTER);
+                        time_offset = generate_timing_jitter(&mut rng);
                     }
 
                     // Calculate pixel time (start) in signal.
@@ -98,18 +120,18 @@ fn main() -> Result<(), Box<dyn Error>> {
                     // pixel, and push them to the NtscDecoder.
                     let mut sample_time = pixel_time + time_offset;
                     for _ in 0..SAMPLES_PER_PERIOD {
-                        let noise = rng.gen_range(0.0..SIGNAL_NOISE);
+                        let noise = generate_signal_noise(&mut rng);
                         let sample = encoder.sample(sample_time) * (1.0 - SIGNAL_NOISE) + noise;
                         decoder.push_sample(sample_time, sample);
                         sample_time += TIME_PER_SAMPLE;
                     }
 
                     // Decode new samples.
-                    let (r, g, b) = decoder.decode();
+                    let (r, g, b) = decoder.decode(false);
 
-                    pixel[0] = SignalFloat::clamp(r * 256.0, 0.0, 255.9) as u8;
-                    pixel[1] = SignalFloat::clamp(g * 256.0, 0.0, 255.9) as u8;
-                    pixel[2] = SignalFloat::clamp(b * 256.0, 0.0, 255.9) as u8;
+                    pixel[0] = SignalFloat::clamp(r * 255.0, 0.0, 255.0) as u8;
+                    pixel[1] = SignalFloat::clamp(g * 255.0, 0.0, 255.0) as u8;
+                    pixel[2] = SignalFloat::clamp(b * 255.0, 0.0, 255.0) as u8;
                     pixel[3] = 0xFF;
                 }
                 pixels.render().expect("Failed to render pixel buffer to screen");

@@ -30,14 +30,13 @@ impl NtscDecoder {
     }
 
     /// Decode the signal using the last `sample_count` samples.
-    pub fn decode(&self) -> RgbSample {
+    pub fn decode(&self, srgb: bool) -> RgbSample {
         if self.sample_queue.len() == self.sample_count {
             // Iterate our sample queue and:
             // * Average out the samples to obtain the luma (Y).
             // * Multiply each sample by the carrier wave (both in and out of phase), average, and
             //   multiply by four to obtain the chroma (I/Q).
             // https://codeandlife.com/2012/10/09/composite-video-decoding-theory-and-practice/
-            // TODO: check if gamma correction is needed.
             let mut y = 0.0;
             let mut i = 0.0;
             let mut q = 0.0;
@@ -53,7 +52,14 @@ impl NtscDecoder {
             let i = i / sample_count * 4.0;
             let q = q / sample_count * 4.0;
 
-            Self::yiq_to_rgb((y, i, q))
+            let color = Self::yiq_to_rgb((y, i, q));
+
+            if srgb {
+                Self::srgb_to_rgb(color)
+            }
+            else {
+                color
+            }
         }
         else {
             // Just return black to be safe.
@@ -72,7 +78,7 @@ impl NtscDecoder {
     }
 
     /// Convert from sRGB to RGB.
-    fn _srgb_to_rgb((r, g, b): SrgbSample) -> RgbSample {
+    fn srgb_to_rgb((r, g, b): SrgbSample) -> RgbSample {
         (r.powf(2.2), g.powf(2.2), b.powf(2.2))
     }
 }

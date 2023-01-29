@@ -1,5 +1,5 @@
 use std::{error::Error, io::Cursor};
-use crate::types::{PixelSample, YiqSample, PI, SignalFloat};
+use crate::types::{PixelSample, YiqSample, PI, SignalFloat, SrgbSample, RgbSample};
 use crate::ntsc::*;
 
 /// The NTSC encoder, allows you to sample the NTSC signal at a given time, generated from an
@@ -51,7 +51,7 @@ impl NtscEncoder {
         let pixel_sample = self.sample_pixel(x, y);
 
         // Output pixel luma.
-        let (y, i, q) = Self::rgb_to_yiq(pixel_sample);
+        let (y, i, q) = Self::srgb_to_yiq(pixel_sample);
 
         y + i * SignalFloat::sin(time * 2.0 * PI * NTSC_COLOR_CARRIER_FREQ)
           + q * SignalFloat::cos(time * 2.0 * PI * NTSC_COLOR_CARRIER_FREQ)
@@ -65,22 +65,19 @@ impl NtscEncoder {
     }
 
     /// Sample a pixel by coordinate.
-    fn sample_pixel(&self, x: SignalFloat, y: SignalFloat) -> PixelSample {
+    pub fn sample_pixel(&self, x: SignalFloat, y: SignalFloat) -> SrgbSample {
         // Convert to image coordinates and clamp.
         let x = u32::clamp((x * self.width as SignalFloat) as u32, 0, self.width);
         let y = u32::clamp((y * self.height as SignalFloat) as u32, 0, self.height);
 
         let idx = y * self.width + x;
-        self.sample_index(idx)
+        let sample_u8 = self.sample_index(idx);
+
+        Self::rgba8_to_rgbf(sample_u8)
     }
 
     /// Convert from rgb to yiq.
-    fn rgb_to_yiq((r, g, b, _): PixelSample) -> YiqSample {
-        // Convert colors to float.
-        let r = r as SignalFloat / 255.0;
-        let g = g as SignalFloat / 255.0;
-        let b = b as SignalFloat / 255.0;
-
+    fn srgb_to_yiq((r, g, b): SrgbSample) -> YiqSample {
         // Calculate luma.
         // https://en.wikipedia.org/wiki/YIQ
         let y = 0.3 * r + 0.59 * g + 0.11 * b;
@@ -88,5 +85,10 @@ impl NtscEncoder {
         let q = 0.41 * (b - y) + 0.48 * (r - y);
 
         (y, i, q)
+    }
+
+    /// Convert from rgb8 pixel data to rgb float data.
+    fn rgba8_to_rgbf((r, g, b, _): PixelSample) -> RgbSample {
+        (r as SignalFloat / 255.0, g as SignalFloat / 255.0, b as SignalFloat / 255.0)
     }
 }
