@@ -36,7 +36,9 @@ const OUTPUT_IMAGE_TIME: SignalFloat = NTSC_SCANLINE_PERIOD * OUTPUT_HEIGHT as S
 /// have pretty precise/deterministic timing compared to a real TV.
 const SAMPLES_PER_PERIOD: usize = 5;
 
-// TODO: note the sine wave might not align with the start of a scanline.
+/// The time interval between each signal sample. In order to decode the luma and chroma values, we
+/// need to take a few samples across the period of the color carrier wave and send them to the
+/// decoder for averaging.
 const TIME_PER_SAMPLE: SignalFloat = NTSC_COLOR_CARRIER_PERIOD / SAMPLES_PER_PERIOD as SignalFloat;
 
 /// Generate timing jitter.
