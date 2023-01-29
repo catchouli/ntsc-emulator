@@ -13,7 +13,7 @@ pub const NTSC_COLOR_CARRIER_FREQ: SignalFloat = 3.579545e6;
 pub const NTSC_COLOR_CARRIER_PERIOD: SignalFloat = 1.0 / NTSC_COLOR_CARRIER_FREQ;
 
 /// The number of scanlines in an NTSC broadcast.
-pub const NTSC_SCANLINE_COUNT: usize = 525;
+pub const NTSC_SCANLINE_COUNT: u32 = 525;
 
 /// The length of time for each scanline in seconds. This includes hsync normally, but we don't
 /// emulate it since we can calculate the correct time range for each pixel being drawn.

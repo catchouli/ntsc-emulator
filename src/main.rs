@@ -9,10 +9,10 @@ use crate::ntsc::*;
 use crate::types::{SignalFloat, PI};
 
 /// The output image width.
-const OUTPUT_WIDTH: u32 = 256 * 2;
+const OUTPUT_WIDTH: u32 = 640;
 
 /// The output image height.
-const OUTPUT_HEIGHT: u32 = 192 * 2;
+const OUTPUT_HEIGHT: u32 = NTSC_SCANLINE_COUNT;
 
 /// The test image data.
 const IMAGE_DATA: &[u8] = include_bytes!("../yamato.png");
@@ -25,7 +25,7 @@ const OUTPUT_IMAGE_TIME: SignalFloat = NTSC_SCANLINE_PERIOD * OUTPUT_HEIGHT as S
 /// The number of samples to use per period to get accurate results. We need to average a sine wave
 /// over its period and obtain a value as close to 0 as possible to minimize error when decoding
 /// the signal luma.
-const DECODER_SAMPLES_PER_PERIOD: usize = 5;
+const DECODER_SAMPLES_PER_PERIOD: u32 = 5;
 
 // TODO: note the sine wave might not align with the start of a scanline.
 const DECODER_TIME_PER_SAMPLE: SignalFloat = NTSC_COLOR_CARRIER_PERIOD / DECODER_SAMPLES_PER_PERIOD as SignalFloat;
@@ -68,20 +68,22 @@ fn main() -> Result<(), Box<dyn Error>> {
     let encoder = NtscEncoder::from_image_buf(IMAGE_DATA)?;
 
     event_loop.run(move |event, _, _| {
-        const TIMING_NOISE: SignalFloat = NTSC_SCANLINE_PERIOD * 0.001;
+        const TIMING_NOISE: SignalFloat = NTSC_SCANLINE_PERIOD * 0.005;
         const SIGNAL_NOISE: SignalFloat = 0.05;
+
+        // Round output height up to nearest scanline multiple.
 
         match event {
             Event::RedrawRequested(_) => {
                 let buf = pixels.get_frame_mut();
                 let mut time_offset = 0.0;
                 for (idx, pixel) in buf.chunks_exact_mut(4).enumerate() {
-                    if idx % OUTPUT_WIDTH as usize == 0 {
+                    if (idx as u32) % OUTPUT_WIDTH == 0 {
                         time_offset = rand::random::<SignalFloat>() * TIMING_NOISE;
                     }
 
                     // Calculate pixel time (start) in signal.
-                    let idx_nrm = idx as SignalFloat / (OUTPUT_WIDTH * OUTPUT_HEIGHT) as SignalFloat;
+                    let idx_nrm = idx as SignalFloat / (OUTPUT_WIDTH * OUTPUT_HEIGHT+10) as SignalFloat;
                     let pixel_time = idx_nrm * OUTPUT_IMAGE_TIME;
 
                     // Calculate luma by averaging samples across the pixel's timespan in the signal.
@@ -109,9 +111,9 @@ fn main() -> Result<(), Box<dyn Error>> {
                     let g = luma - 0.2748 * i - 0.6357 * q;
                     let b = luma - 1.1 * i + 1.7 * q;
 
-                    pixel[0] = (r * 255.0) as u8;
-                    pixel[1] = (g * 255.0) as u8;
-                    pixel[2] = (b * 255.0) as u8;
+                    pixel[0] = SignalFloat::clamp(r * 256.0, 0.0, 255.9) as u8;
+                    pixel[1] = SignalFloat::clamp(g * 256.0, 0.0, 255.9) as u8;
+                    pixel[2] = SignalFloat::clamp(b * 256.0, 0.0, 255.9) as u8;
                     pixel[3] = 0xFF;
                 }
                 pixels.render().expect("Failed to render pixel buffer to screen");

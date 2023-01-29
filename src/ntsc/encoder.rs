@@ -1,6 +1,6 @@
 use std::{error::Error, io::Cursor};
 use crate::types::{PixelSample, YiqSample, PI, SignalFloat};
-use crate::{OUTPUT_IMAGE_TIME, NTSC_SCANLINE_PERIOD, OUTPUT_HEIGHT, NTSC_COLOR_CARRIER_FREQ};
+use crate::ntsc::*;
 
 /// The NTSC encoder, allows you to sample the NTSC signal at a given time, generated from an
 /// internal pixel buffer.
@@ -43,8 +43,8 @@ impl NtscEncoder {
         // given time, as if the signal changes instantly whenever there's a new pixel.
         // TODO: a bit wrong semantically, I think the number of scanlines supported by the NTSC
         // decoder shouldn't depend on the output image size, but the other way around.
-        let time = time % OUTPUT_IMAGE_TIME;
-        let y = (time / NTSC_SCANLINE_PERIOD) as usize as SignalFloat / OUTPUT_HEIGHT as SignalFloat;
+        let time = time % NTSC_IMAGE_PERIOD;
+        let y = (time / NTSC_SCANLINE_PERIOD) as u32 as SignalFloat / NTSC_SCANLINE_COUNT as SignalFloat;
         let x = (time % NTSC_SCANLINE_PERIOD) / NTSC_SCANLINE_PERIOD;
 
         // Sample pixel buffer.
@@ -58,8 +58,8 @@ impl NtscEncoder {
     }
 
     /// Sample a pixel at the given pixel index.
-    fn sample_index(&self, idx: usize) -> PixelSample {
-        let idx = (idx * 4) % self.pixel_buffer.len();
+    fn sample_index(&self, idx: u32) -> PixelSample {
+        let idx = ((idx * 4) as usize) % self.pixel_buffer.len();
         let pixels = &self.pixel_buffer[idx..idx+4];
         (pixels[0], pixels[1], pixels[2], pixels[3])
     }
@@ -70,7 +70,7 @@ impl NtscEncoder {
         let x = u32::clamp((x * self.width as SignalFloat) as u32, 0, self.width);
         let y = u32::clamp((y * self.height as SignalFloat) as u32, 0, self.height);
 
-        let idx = (y * self.width + x) as usize;
+        let idx = y * self.width + x;
         self.sample_index(idx)
     }
 
